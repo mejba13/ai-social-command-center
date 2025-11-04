@@ -1,0 +1,365 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER & AUTH ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String?
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  resetToken    String?
+  resetTokenExpiry DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // OAuth providers
+  accounts      Account[]
+
+  // Relations
+  workspaces    WorkspaceMember[]
+  posts         Post[]
+  comments      Comment[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// ==================== WORKSPACE ====================
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  image     String?
+  plan      PlanType @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  members        WorkspaceMember[]
+  socialAccounts SocialAccount[]
+  posts          Post[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String       @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  invitedAt   DateTime     @default(now())
+  joinedAt    DateTime?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MANAGER
+  CREATOR
+  ANALYST
+  MEMBER
+}
+
+enum PlanType {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+// ==================== SOCIAL ACCOUNTS ====================
+
+model SocialAccount {
+  id              String        @id @default(cuid())
+  workspaceId     String
+  platform        Platform
+  platformUserId  String
+  username        String
+  displayName     String?
+  profileImage    String?
+  accessToken     String        @db.Text
+  refreshToken    String?       @db.Text
+  tokenExpiresAt  DateTime?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  posts     PostPlatform[]
+
+  @@unique([workspaceId, platform, platformUserId])
+  @@index([workspaceId])
+  @@map("social_accounts")
+}
+
+enum Platform {
+  FACEBOOK
+  INSTAGRAM
+  TWITTER
+  LINKEDIN
+  TIKTOK
+  YOUTUBE
+  PINTEREST
+}
+
+// ==================== POSTS ====================
+
+model Post {
+  id          String     @id @default(cuid())
+  workspaceId String
+  authorId    String
+  content     String     @db.Text
+  status      PostStatus @default(DRAFT)
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  failedAt    DateTime?
+  errorMessage String?   @db.Text
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id])
+
+  platforms PostPlatform[]
+  media     Media[]
+  analytics PostAnalytics[]
+  comments  Comment[]
+  tags      Tag[]
+
+  @@index([workspaceId, status])
+  @@index([scheduledAt])
+  @@index([workspaceId, authorId])
+  @@map("posts")
+}
+
+model PostPlatform {
+  id              String  @id @default(cuid())
+  postId          String
+  socialAccountId String
+  platformPostId  String? // ID from the platform after publishing
+  status          PostStatus @default(DRAFT)
+  publishedAt     DateTime?
+  failedAt        DateTime?
+  errorMessage    String?
+
+  post          Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, socialAccountId])
+  @@map("post_platforms")
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+// ==================== MEDIA ====================
+
+model Media {
+  id          String    @id @default(cuid())
+  postId      String?
+  workspaceId String?
+  filename    String
+  url         String
+  type        MediaType
+  size        Int
+  width       Int?
+  height      Int?
+  altText     String?
+  createdAt   DateTime  @default(now())
+
+  post Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("media")
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  GIF
+  DOCUMENT
+}
+
+// ==================== ANALYTICS ====================
+
+model PostAnalytics {
+  id          String   @id @default(cuid())
+  postId      String
+  platform    Platform
+  likes       Int      @default(0)
+  comments    Int      @default(0)
+  shares      Int      @default(0)
+  views       Int      @default(0)
+  clicks      Int      @default(0)
+  engagement  Float    @default(0)
+  reach       Int      @default(0)
+  impressions Int      @default(0)
+  syncedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, platform])
+  @@map("post_analytics")
+}
+
+// ==================== COMMENTS & ENGAGEMENT ====================
+
+model Comment {
+  id              String   @id @default(cuid())
+  postId          String?
+  authorId        String?
+  platform        Platform
+  platformCommentId String
+  content         String   @db.Text
+  authorName      String
+  authorImage     String?
+  sentiment       Sentiment?
+  isRead          Boolean  @default(false)
+  isReplied       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  post   Post? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User? @relation(fields: [authorId], references: [id])
+
+  @@unique([platform, platformCommentId])
+  @@index([postId])
+  @@map("comments")
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+// ==================== CONTENT MANAGEMENT ====================
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  posts Post[]
+
+  @@map("tags")
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  name        String
+  content     String   @db.Text
+  category    String?
+  isPublic    Boolean  @default(false)
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("templates")
+}
+
+// ==================== AI & AUTOMATION ====================
+
+model AIGeneration {
+  id          String   @id @default(cuid())
+  workspaceId String
+  type        AIGenerationType
+  prompt      String   @db.Text
+  result      String   @db.Text
+  model       String
+  tokens      Int
+  cost        Float
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId])
+  @@map("ai_generations")
+}
+
+enum AIGenerationType {
+  CAPTION
+  IMAGE
+  HASHTAG
+  REPURPOSE
+}
+
+model BrandVoice {
+  id          String   @id @default(cuid())
+  workspaceId String   @unique
+  tone        String
+  style       String
+  keywords    String[]
+  avoidWords  String[]
+  samples     String[] @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("brand_voices")
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  POST_PUBLISHED
+  POST_FAILED
+  COMMENT_RECEIVED
+  MENTION
+  WORKSPACE_INVITE
+  SYSTEM
+}
