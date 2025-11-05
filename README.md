@@ -1,4 +1,4 @@
-# AI Social Command Center
+<img width="1515" height="1260" alt="CleanShot 2025-11-05 at 7  03 41" src="https://github.com/user-attachments/assets/114eb8fa-813d-4f08-a320-e9d0deb10d5d" /><img width="1515" height="1260" alt="CleanShot 2025-11-05 at 7  03 41" src="https://github.com/user-attachments/assets/98e240cf-99cd-41a2-b87c-89200dd30500" /># AI Social Command Center
 
 A unified, AI-powered social media management platform for managing multiple social media accounts, automating content creation, engaging with audiences, and analyzing performance across all major platforms.
 
@@ -306,7 +306,7 @@ Proprietary - All rights reserved
 
 - 🔗 **Fiverr** (custom builds, integrations, performance): [fiverr.com/s/EgxYmWD](https://www.fiverr.com/s/EgxYmWD)
 - 🌐 **Mejba Personal Portfolio**: [mejba.me](https://www.mejba.me)
-- 🏢 **Ramlit System Portal**: [system.ramlit.com](https://system.ramlit.com)
+- 🏢 **Ramlit Limited**: [https://www.ramlit.com)](https://www.ramlit.com)
 - 🎨 **ColorPark Creative Agency**: [colorpark.io](https://www.colorpark.io)
 - 🛡 **xCyberSecurity Global Services**: [xcybersecurity.io](https://www.xcybersecurity.io)
 
